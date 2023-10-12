@@ -2,32 +2,34 @@ package main
 
 import (
 	"github.com/labstack/echo/v4"
-	"net/http"
 	"simple-rest/config"
+	"simple-rest/controller"
 )
-
-type Book struct {
-	Id          int    `gorm:"primaryKey" json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
 
 func main() {
 	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"hello": "world",
-		})
-	})
-	e.Logger.Fatal(e.Start(":8080"))
 
 	config.DbInit()
 	gorm := config.Db()
 
 	dbGorm, err := gorm.DB()
 	if err != nil {
-		panic(err)
+		e.Logger.Fatalf("Failed to connect to the database: %v", err)
 	}
-	dbGorm.Ping()
-	e.Logger.Fatal(e.Start(":8080"))
+
+	err = dbGorm.Ping()
+	if err != nil {
+		e.Logger.Fatalf("Failed to ping the database: %v", err)
+	}
+
+	bookRoute := e.Group("/book")
+	bookRoute.POST("/", controller.CreateBook)
+	bookRoute.GET("/:id", controller.GetBook)
+	bookRoute.PUT("/:id", controller.UpdateBook)
+	bookRoute.DELETE("/:id", controller.DeleteBook)
+
+	err = e.Start(":4545")
+	if err != nil {
+		e.Logger.Fatalf("Failed to start the server: %v", err)
+	}
 }
